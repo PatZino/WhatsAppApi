@@ -1,28 +1,39 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Runtime;
 using System.Text;
 using System.Threading.Tasks;
+using WhatsAppApi.Models;
 
 namespace WhatsAppApi.Controllers
 {
-	[Route("api/[controller]")]
+
+    /**
+     * 	https://www.waboxapp.com/assets/doc/waboxapp-API-v3.pdf
+     * 	https://www.waboxapp.com/terms
+     * 	https://www.waboxapp.com/pricing
+     * 	Limit of 100 free messages every month
+     * **/
+
+    [Route("api/[controller]")]
 	[ApiController]
 	public class WhatsappController : ControllerBase
 	{
-		// https://www.waboxapp.com/assets/doc/waboxapp-API-v3.pdf
-		// https://www.waboxapp.com/terms
-		// https://www.waboxapp.com/pricing
+        private static readonly HttpClient client = new HttpClient();
+        private readonly WaboxappSettings _waboxappSettings;
 
-		private static readonly HttpClient client = new HttpClient();
-		private readonly string apiKey = "your_api_key";
-		private readonly string apiUrl = "https://api.waboxapp.com/api/send/chat";
+        public WhatsappController(IOptions<WaboxappSettings> waboxappSettings)
+        {
+            _waboxappSettings = waboxappSettings.Value;
+        }
 
-		// GET: api/<WhatsappController>
-		[HttpGet]
+        // GET: api/<WhatsappController>
+        [HttpGet]
 		public IEnumerable<string> Get()
 		{
 			return new string[] { "value1", "value2" };
@@ -35,22 +46,22 @@ namespace WhatsAppApi.Controllers
 			return "value";
 		}
 
-		// POST api/<WhatsappController>
-		[HttpPost]
-		public async Task<IActionResult> SendMessage(string to, string text)
+        // POST api/<WhatsappController>/sendmessage
+        [HttpPost("sendmessage")]
+		public async Task<IActionResult> SendMessage(SendMessage model)
 		{
 			var message = new
 			{
-				token = apiKey,
-				uid = to,
-				to = to,
+				token = _waboxappSettings.ApiKey,
+				uid = model.ConfiguredPhoneNumberOnWaboxapp,
+				to = model.To,
 				custom_uid = Guid.NewGuid().ToString(),
-				text = text
+				text = model.Text
 			};
 
 			var content = new StringContent(JsonConvert.SerializeObject(message), Encoding.UTF8, "application/json");
 
-			var response = await client.PostAsync(apiUrl, content);
+			var response = await client.PostAsync(_waboxappSettings.ApiUrl, content);
 
 			if (response.IsSuccessStatusCode)
 			{
